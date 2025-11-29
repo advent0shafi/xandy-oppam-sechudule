@@ -94,3 +94,61 @@ export const recalculateSchedule = (events: EventItem[]): EventItem[] => {
   
   return updatedEvents;
 };
+
+export const parseCSV = (csvText: string): EventItem[] => {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+
+  // Robust CSV parsing to handle newlines inside quotes
+  for (let i = 0; i < csvText.length; i++) {
+    const char = csvText[i];
+    const nextChar = csvText[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        currentField += '"';
+        i++; // skip next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      currentRow.push(currentField);
+      currentField = '';
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') i++;
+      currentRow.push(currentField);
+      rows.push(currentRow);
+      currentRow = [];
+      currentField = '';
+    } else {
+      currentField += char;
+    }
+  }
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField);
+    rows.push(currentRow);
+  }
+
+  // Remove header row if it exists
+  const dataRows = rows.slice(1);
+
+  return dataRows.map((row, index) => {
+    // Map CSV columns to EventItem. 
+    // Assumed Order: Start Time, Duration, Title, Description, Team Lead, Team Members, Logistics, Notes, Script, Category
+    return {
+      id: Date.now().toString() + index,
+      startTime: row[0] || '',
+      duration: row[1] || '',
+      title: row[2] || 'Untitled',
+      description: row[3] || '',
+      teamLead: row[4] || '',
+      teamMembers: row[5] || '',
+      logistics: row[6] || '',
+      notes: row[7] || '',
+      script: row[8] || '',
+      category: (row[9] as any) || 'general'
+    };
+  }).filter(e => e.title); // Filter out empty rows
+};

@@ -1,12 +1,13 @@
 
-import React, { useState } from 'react';
-import { Plus, Download, RotateCcw, Search, Calendar, Database } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Download, RotateCcw, Search, Calendar, Upload } from 'lucide-react';
 import { EventItem } from './types';
 import { EventCard } from './components/EventCard';
 import { EditModal } from './components/EditModal';
 import { Button } from './components/Button';
 import { useEvents } from './hooks/useEvents';
 import { INITIAL_EVENTS } from './constants';
+import { parseCSV } from './utils';
 
 const App: React.FC = () => {
   const { events, loading, error, saveEvents } = useEvents();
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
@@ -113,6 +115,38 @@ const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (text) {
+        try {
+            const parsedEvents = parseCSV(text);
+            if (parsedEvents.length > 0) {
+                if (window.confirm(`Successfully parsed ${parsedEvents.length} events. Replace current schedule?`)) {
+                    saveEvents(parsedEvents);
+                }
+            } else {
+                alert("Could not find valid events in CSV.");
+            }
+        } catch (err) {
+            alert("Error parsing CSV file.");
+            console.error(err);
+        }
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
   const handleReset = () => {
     if(window.confirm('Reset to original sample data? All changes will be lost.')) {
         saveEvents(INITIAL_EVENTS);
@@ -152,10 +186,20 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={handleReset} title="Reset Data" className="hidden sm:flex">
-                        <RotateCcw size={18} />
+                    {/* Hidden File Input */}
+                    <input 
+                        type="file" 
+                        accept=".csv" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        className="hidden" 
+                    />
+
+                    <Button size="sm" variant="ghost" onClick={handleImportClick} title="Import CSV" className="hidden sm:flex">
+                        <Upload size={18} className="mr-2"/>
+                        Import
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={handleExport} className="hidden sm:flex">
+                    <Button size="sm" variant="ghost" onClick={handleExport} title="Export CSV" className="hidden sm:flex">
                         <Download size={18} className="mr-2" />
                         Export
                     </Button>
@@ -181,7 +225,7 @@ const App: React.FC = () => {
             {/* Error or Supabase Warning */}
             {error && (
               <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm border border-red-100">
-                {error} - using local data.
+                {error}
               </div>
             )}
 
@@ -193,6 +237,7 @@ const App: React.FC = () => {
                         <div className="text-gray-300 mb-4 flex justify-center"><Calendar size={48} /></div>
                         <h3 className="text-lg font-medium text-gray-900">No events found</h3>
                         <p className="text-gray-500">Try adjusting your search or add a new event.</p>
+                        <Button variant="secondary" onClick={handleReset} className="mt-4">Load Default Data</Button>
                     </div>
                 ) : (
                     filteredEvents.map((event, index) => (

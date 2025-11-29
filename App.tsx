@@ -93,12 +93,12 @@ const App: React.FC = () => {
       ...events.map(e => [
         `"${e.startTime}"`,
         `"${e.duration}"`,
-        `"${e.title.replace(/"/g, '""')}"`,
-        `"${e.description.replace(/"/g, '""')}"`,
-        `"${e.teamLead.replace(/"/g, '""')}"`,
-        `"${e.teamMembers.replace(/"/g, '""')}"`,
-        `"${e.logistics.replace(/"/g, '""')}"`,
-        `"${e.notes.replace(/"/g, '""')}"`,
+        `"${(e.title || '').replace(/"/g, '""')}"`,
+        `"${(e.description || '').replace(/"/g, '""')}"`,
+        `"${(e.teamLead || '').replace(/"/g, '""')}"`,
+        `"${(e.teamMembers || '').replace(/"/g, '""')}"`,
+        `"${(e.logistics || '').replace(/"/g, '""')}"`,
+        `"${(e.notes || '').replace(/"/g, '""')}"`,
         `"${(e.script || '').replace(/"/g, '""')}"`,
         `"${e.category}"`
       ].join(','))
@@ -130,11 +130,11 @@ const App: React.FC = () => {
         try {
             const parsedEvents = parseCSV(text);
             if (parsedEvents.length > 0) {
-                if (window.confirm(`Successfully parsed ${parsedEvents.length} events. Replace current schedule?`)) {
+                if (window.confirm(`Successfully parsed ${parsedEvents.length} events. This will replace your current schedule. Continue?`)) {
                     saveEvents(parsedEvents);
                 }
             } else {
-                alert("Could not find valid events in CSV.");
+                alert("Could not find valid events in CSV. Please check the format.");
             }
         } catch (err) {
             alert("Error parsing CSV file.");
@@ -143,19 +143,19 @@ const App: React.FC = () => {
       }
     };
     reader.readAsText(file);
-    // Reset input
+    // Reset input to allow re-uploading same file if needed
     e.target.value = '';
   };
 
   const handleReset = () => {
-    if(window.confirm('Reset to original sample data? All changes will be lost.')) {
+    if(window.confirm('Reset to original Master Schedule? All current changes will be lost.')) {
         saveEvents(INITIAL_EVENTS);
     }
   }
 
   const filteredEvents = events.filter(e => 
     e.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    e.teamLead.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (e.teamLead && e.teamLead.toLowerCase().includes(searchTerm.toLowerCase())) ||
     e.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -203,6 +203,12 @@ const App: React.FC = () => {
                         <Download size={18} className="mr-2" />
                         Export
                     </Button>
+                    
+                    {/* Reset Button (Only visible on larger screens for safety) */}
+                    <Button size="sm" variant="ghost" onClick={handleReset} title="Reset to Master Data" className="hidden md:flex text-gray-400 hover:text-red-500">
+                         <RotateCcw size={18} />
+                    </Button>
+
                      <Button size="sm" variant="primary" onClick={handleAddNew} className="rounded-full w-10 h-10 p-0 sm:w-auto sm:h-auto sm:px-4 sm:py-2">
                         <Plus size={20} className="sm:mr-2" />
                         <span className="hidden sm:inline">Add Event</span>
@@ -237,7 +243,7 @@ const App: React.FC = () => {
                         <div className="text-gray-300 mb-4 flex justify-center"><Calendar size={48} /></div>
                         <h3 className="text-lg font-medium text-gray-900">No events found</h3>
                         <p className="text-gray-500">Try adjusting your search or add a new event.</p>
-                        <Button variant="secondary" onClick={handleReset} className="mt-4">Load Default Data</Button>
+                        <Button variant="secondary" onClick={handleReset} className="mt-4">Load Master Schedule</Button>
                     </div>
                 ) : (
                     filteredEvents.map((event, index) => (

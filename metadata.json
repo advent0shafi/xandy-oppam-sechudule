@@ -1,0 +1,5 @@
+{
+  "name": "Brutalist Event Planner",
+  "description": "A minimal, high-contrast, brutalist-style event scheduler allowing drag-and-drop reordering and editing of complex program agendas.",
+  "requestFramePermissions": []
+}
